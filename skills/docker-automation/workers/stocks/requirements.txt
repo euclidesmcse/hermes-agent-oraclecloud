@@ -1,0 +1,2 @@
+# Worker de stocks foi substituído por chamada direta ao Hermes
+# Este arquivo é mantido para referência histórica

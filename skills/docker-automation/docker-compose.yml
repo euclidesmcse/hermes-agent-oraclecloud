@@ -1,0 +1,40 @@
+version: '3.8'
+
+services:
+  hermes-newsletter:
+    build:
+      context: ./workers/newsletter
+      dockerfile: Dockerfile
+    volumes:
+      - ./data/newsletter:/data/newsletter
+    environment:
+      - TZ=Europe/Lisbon
+      - NEWSLETTER_OUTPUT=/data/newsletter/output
+      - NEWSLETTER_FEEDS=/data/newsletter/feeds.json
+      - NEWSLETTER_SEEN=/data/newsletter/seen.json
+    entrypoint: ["python", "/app/worker.py"]
+
+  hermes-stocks:
+    build:
+      context: ./workers/stocks
+      dockerfile: Dockerfile
+    volumes:
+      - ./data/stocks:/data/stocks
+    environment:
+      - TZ=Europe/Lisbon
+      - STOCKS_OUTPUT=/data/stocks/alerts
+      - STOCKS_WATCHLIST=/data/stocks/watchlist.json
+      - THRESHOLD_PCT=5
+    entrypoint: ["python", "/app/worker.py"]
+
+  hermes-scraper:
+    build:
+      context: ./workers/scraper
+      dockerfile: Dockerfile
+    volumes:
+      - ./data/scraper:/data/scraper
+    environment:
+      - TZ=Europe/Lisbon
+      - SCRAPER_OUTPUT=/data/scraper/output
+      - TIMEOUT=30000
+    entrypoint: ["node", "/app/worker.js"]

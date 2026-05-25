@@ -1,0 +1,7 @@
+{
+  "name": "hermes-scraper-worker",
+  "version": "1.0.0",
+  "dependencies": {
+    "puppeteer-core": "^21.6.1"
+  }
+}

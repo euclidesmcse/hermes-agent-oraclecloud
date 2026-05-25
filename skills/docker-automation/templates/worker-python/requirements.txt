@@ -1,0 +1,6 @@
+# Template requirements.txt
+# Adicione apenas bibliotecas essenciais para manter imagem leve
+
+requests==2.31.0
+# python-dateutil==2.8.2
+# feedparser==6.0.10

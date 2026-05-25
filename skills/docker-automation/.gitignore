@@ -1,0 +1,18 @@
+# Ambiente local e secrets
+.env
+
+# Banco de dados e arquivos locais gerados pelos workers
+data/
+**/data/
+
+# Dependências e caches
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+node_modules/
+npm-debug.log*
+
+# Arquivos de log e estados temporários
+*.log
