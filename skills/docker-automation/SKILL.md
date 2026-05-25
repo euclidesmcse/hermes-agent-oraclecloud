@@ -135,18 +135,21 @@ docker-compose run --rm hermes-scraper https://example.com "h1"
 
 ## 🔧 Configuração
 
-### Versionamento e Backup (GitHub)
-É altamente recomendado manter as definições do Compose e o código dos workers versionados em um repositório Git (como GitHub) para backup, portabilidade e controle de versão. 
+### Versionamento, Backup e Recuperação (GitHub)
+O código dos workers e as definições do compose estão centralizados e sincronizados no repositório privado do usuário no GitHub:
+🔗 `git@github.com:euclidesmcse/hermes-agent-oraclecloud.git`
+
+Este repositório foi estruturado como um monorepo que contém toda a configuração da VM do Hermes Agent, incluindo chaves SSH para autenticação silenciosa, evitando o uso de prompts interativos ou tokens PAT expostos na CLI.
 
 **Regras de Ouro de Segurança:**
-* **Nunca** suba o arquivo `.env` contendo credenciais ou tokens.
-* **Nunca** suba o diretório `data/` ou quaisquer arquivos locais contendo dados privados ou histórico de execução (ex: `seen.json`, `watchlist.json`, etc.).
-* Crie sempre um arquivo `.gitignore` na raiz com:
+* **Nunca** envie o arquivo `.env` contendo credenciais ou tokens de APIs para o repositório público/privado.
+* **Nunca** envie o diretório `data/` contendo dados coletados localmente, históricos ou cookies de sessões de scraping.
+* O arquivo `.gitignore` na raiz da skill deve sempre ignorar esses arquivos dinâmicos e confidenciais:
   ```gitignore
   # Ambiente local e secrets
   .env
 
-  # Dados locais e outputs gerados
+  # Dados locais e outputs gerados pelos workers
   data/
   **/data/
 
@@ -156,16 +159,28 @@ docker-compose run --rm hermes-scraper https://example.com "h1"
   node_modules/
   ```
 
-**Iniciando o repositório:**
+---
+
+## 💾 Scripts Automatizados de Backup e Recuperação
+
+Foram criados e validados scripts dedicados de recuperação de desastres localizados na raiz do repositório (`/home/ubuntu/hermes-agent-oraclecloud/scripts/`):
+
+### 1. Criando um Backup (`backup.sh`)
+Gera um arquivo de backup sanitizado compactado contendo toda a infraestrutura da skill, variáveis `.env` locais, memórias (`USER.md` / `MEMORY.md`), agendamentos de Cron e chaves do e-mail Himalaya CLI.
 ```bash
-cd ~/.hermes/skills/docker-automation
-git init
-git add .
-git commit -m "feat: adicionar infraestrutura de docker-automation e workers"
-git branch -M main
-git remote add origin git@github.com:usuario/repo.git
-git push -u origin main
+/home/ubuntu/hermes-agent-oraclecloud/scripts/backup.sh
 ```
+* **Destino:** `/home/ubuntu/hermes-backup/hermes-configuration-backup.tar.gz`
+* **Dica:** Transfira esse arquivo `.tar.gz` via `scp` para o seu computador local como salvaguarda física offline.
+
+### 2. Restaurando em uma Nova VM (`restore.sh`)
+Se a VM atual crashar e você criar uma nova VM do zero, após clonar o repositório e enviar o arquivo `.tar.gz` de backup para `/home/ubuntu/`, execute o script de restauração:
+```bash
+/home/ubuntu/hermes-agent-oraclecloud/scripts/restore.sh
+```
+Ele recriará automaticamente todos os diretórios da skill, descompactará suas credenciais, restaurará o Himalaya, configurará as pastas limpas do Docker e recriará as estruturas `/data/` vazias necessárias para que você faça o build imediato.
+
+---
 
 ### Variáveis de Ambiente (.env)
 ```bash
@@ -209,6 +224,20 @@ TZ=Europe/Lisbon
 - **Problema:** Cron jobs rodam em ambiente minimalista sem PATH completo
 - **Solução:** Usar caminhos absolutos (`~/.hermes/skills/docker-automation/docker-compose.yml`)
 - **Dica:** Testar com `hermes cronjob run <job_id>` antes de confiar no schedule
+
+**5. Versionamento e Backup no GitHub (Authentication & Conflict Resolutions)**
+- **Problema (Autenticação HTTPS):** Tentativas de enviar (`git push`) via HTTPS falham com `Password authentication is not supported` devido à desativação de senhas tradicionais pelo GitHub.
+- **Solução (SSH):** Gerar um par de chaves SSH (`ssh-keygen -t ed25519 -C "email"`), adicionar a chave pública em *Settings -> SSH and GPG keys* no GitHub, e configurar o repositório remoto para usar SSH (`git@github.com:usuario/repositorio.git`).
+- **Problema (Histórico Divergente - Push Rejeitado):** Se o repositório remoto já possuir outros commits (ex: arquivo `LICENSE` ou `README`), o push será rejeitado com `[rejected] main -> main (fetch first)`.
+- **Solução (Organização por Subpastas):** Em vez de forçar o push direto, clone o repositório remoto em uma pasta de trabalho, crie uma estrutura organizada (como `skills/docker-automation/`), copie os arquivos locais da skill para lá (omitindo a pasta `.git` interna da skill) e faça o commit/push a partir do clone. Isso mantém o histórico limpo e centraliza múltiplas skills em um só lugar.
+
+**6. Arquivos gerados por containers Docker pertencem ao root**
+- **Problema:** Quando o container roda e grava dados no volume compartilhado (`data/`), os arquivos criados pertencem ao `root` no host (já que o container roda como root), gerando erros de `Permission denied` para o Hermes Agent (usuário `ubuntu`) ao tentar editar ou substituir esses arquivos no host.
+- **Solução:** Modificar recursivamente a propriedade dos arquivos gerados de volta para o usuário `ubuntu` executando:
+  ```bash
+  sudo chown -R ubuntu:ubuntu /home/ubuntu/.hermes/skills/docker-automation/data/
+  ```
+- **Prevenção:** Sempre execute o comando de correção de permissões no host após rodar containers que escrevem em volumes, ou garanta que o container use o UID/GID do usuário ubuntu (ex: `-u $(id -u):$(id -g)` ou definindo `user: "1000:1000"` no docker-compose).
 
 ### Docker Compose (docker-compose.yml)
 ```yaml
