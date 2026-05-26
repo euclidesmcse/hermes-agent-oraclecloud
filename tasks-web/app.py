@@ -290,10 +290,15 @@ def get_dashboard(request: Request):
             let currentFilter = 'all';
             let showCompleted = true;
 
+            // Determine API base URL dynamically for subpaths (e.g., /agenda or /)
+            const baseApiUrl = window.location.pathname.endsWith('/') 
+                ? window.location.pathname + 'api/tasks' 
+                : window.location.pathname + '/api/tasks';
+
             // Fetch tasks from API
             async function fetchTasks() {
                 try {
-                    const response = await fetch('/api/tasks');
+                    const response = await fetch(baseApiUrl);
                     allTasks = await response.json();
                     renderTasks();
                     updateBadge(true);
@@ -452,7 +457,7 @@ def get_dashboard(request: Request):
                 if (!content) return;
 
                 try {
-                    const response = await fetch('/api/tasks', {
+                    const response = await fetch(baseApiUrl, {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ content, category })
@@ -469,7 +474,7 @@ def get_dashboard(request: Request):
 
             // Toggle task state (completed <-> pending)
             async function toggleTaskCompletion(taskId, currentlyCompleted) {
-                const endpoint = currentlyCompleted ? `/api/tasks/${taskId}/pending` : `/api/tasks/${taskId}/complete`;
+                const endpoint = currentlyCompleted ? `${baseApiUrl}/${taskId}/pending` : `${baseApiUrl}/${taskId}/complete`;
                 const row = document.getElementById(`row-${taskId}`);
                 
                 // Optimistic UI updates
@@ -500,7 +505,7 @@ def get_dashboard(request: Request):
                 }
 
                 try {
-                    const response = await fetch(`/api/tasks/${taskId}`, { method: 'DELETE' });
+                    const response = await fetch(`${baseApiUrl}/${taskId}`, { method: 'DELETE' });
                     if (response.ok) {
                         await fetchTasks();
                     }

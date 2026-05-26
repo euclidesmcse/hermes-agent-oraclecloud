@@ -10,6 +10,8 @@ services:
       - "8000:8000"
     volumes:
       - ./tasks.json:/app/tasks.json
+    networks:
+      - proxy-net
     restart: unless-stopped
     # FinOps Resource Limits: Keep footprint small and prevent memory leaks/CPU spikes
     deploy:
@@ -19,3 +21,7 @@ services:
           memory: 128M
         reservations:
           memory: 32M
+
+networks:
+  proxy-net:
+    external: true
