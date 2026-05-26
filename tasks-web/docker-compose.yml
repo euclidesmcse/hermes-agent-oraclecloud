@@ -1,0 +1,21 @@
+version: '3.8'
+
+services:
+  tasks-web:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: tasks-web
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./tasks.json:/app/tasks.json
+    restart: unless-stopped
+    # FinOps Resource Limits: Keep footprint small and prevent memory leaks/CPU spikes
+    deploy:
+      resources:
+        limits:
+          cpus: '0.25'
+          memory: 128M
+        reservations:
+          memory: 32M

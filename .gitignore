@@ -1,0 +1,7 @@
+# Caches and local files
+__pycache__/
+*.pyc
+.env
+
+# Tasks database (contains private tasks, should remain local on the VM)
+tasks-web/tasks.json
