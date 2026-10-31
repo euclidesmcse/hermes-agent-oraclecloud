@@ -626,4 +626,63 @@ cd workers/scraper
 npm test
 ```
 
+## 🛰️ SENTINEL Observability Agent Deployment
+
+Use this section when you need to containerize the SENTINEL observability agent for isolated deployment, especially when:
+
+- Running on a host where you cannot install directly (e.g., CI/CD, fresh VM)
+- You need to expose telemetry ports (e.g., 5000) for API access
+- You want the `sentinel.service` systemd unit to start automatically inside the container
+
+### Steps
+
+1. **Prepare directory**
+   ```bash
+   mkdir -p $HOME/hermescompany
+   cd $HOME/hermescompany
+   ```
+
+2. **Create Dockerfile**
+   ```Dockerfile
+   FROM ubuntu:22.04
+   RUN apt-get update && \
+       apt-get install -y python3 python3-pip sqlite3 systemd curl ca-certificates vim net-tools && \
+       rm -rf /var/lib/apt/lists/*
+   WORKDIR /app
+   COPY sentinel.py /app/
+   COPY sentinel_config.json /app/
+   COPY sentinel.service /etc/systemd/system/
+   COPY sentinel-agent.tar.gz /tmp/
+   RUN tar -xzf /tmp/sentinel-agent.tar.gz -C /app && rm /tmp/sentinel-agent.tar.gz \
+       && chmod +x /app/sentinel.py
+   RUN systemctl enable sentinel.service
+   EXPOSE 5000
+   CMD ["/sbin/init"]
+   ```
+
+3. **Build & Run**
+   ```bash
+   docker build -t sentinel-app .
+   docker run -d --name sentinel -v $HOME/hermescompany:/app -p 5000:5000 sentinel-app
+   ```
+
+4. **Verify**
+   ```bash
+   docker exec sentinel systemctl status sentinel.service
+   docker logs sentinel
+   ```
+
+### Dockerized Dashboard
+
+For deployments needing a browser-accessible observability dashboard alongside the SENTINEL agent, see `references/sentinel-deployment.md` for:
+- Static Chart.js dashboard (standalone HTML)
+- Docker Compose with agent + dashboard services
+- Health check configuration for both containers
+
+### Pitfalls & Fixes
+
+- **Missing `sqlite3`** – Ensure `apt-get install sqlite3` is in the Dockerfile; needed for the brain database.
+- **Systemd not fully functional** – Use `--privileged` or `--cap-add=SYS_ADMIN` if `systemctl` fails inside the container.
+- **Port conflict** – Host port 5000 may be taken; adjust `EXPOSE` and `-p` accordingly.
+
 </content>
